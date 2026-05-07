@@ -33,10 +33,16 @@ class RouteHistoryQuerySerializer(serializers.Serializer):
     date_to = serializers.CharField(required=False)
 
     def validate_date_from(self, value: str):
-        return _parse_dt(value)
+        try:
+            return _parse_dt(value)
+        except ValueError as exc:
+            raise serializers.ValidationError("Invalid datetime format") from exc
 
     def validate_date_to(self, value: str):
-        return _parse_dt(value)
+        try:
+            return _parse_dt(value)
+        except ValueError as exc:
+            raise serializers.ValidationError("Invalid datetime format") from exc
 
 
 class RouteHistoryItemSerializer(serializers.ModelSerializer):

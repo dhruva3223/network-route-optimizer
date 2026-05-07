@@ -46,7 +46,11 @@ class RouteHistoryView(APIView):
     def get(self, request):
         qs = RouteQuery.objects.select_related("source", "destination").all()
         query_serializer = RouteHistoryQuerySerializer(data=request.query_params)
-        query_serializer.is_valid(raise_exception=False)
+        if not query_serializer.is_valid():
+            return Response(
+                {"error": query_serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         params = query_serializer.validated_data
 
         source = params.get("source")

@@ -11,7 +11,7 @@ class NodeApiTestCase(TestCase):
 
     def test_post_node_creates_and_returns_201(self):
         resp = self.client.post(
-            "/api/network/nodes",
+            "/nodes",
             data=json.dumps({"name": "ServerA"}),
             content_type="application/json",
         )
@@ -23,7 +23,7 @@ class NodeApiTestCase(TestCase):
 
     def test_post_node_missing_name_returns_400(self):
         resp = self.client.post(
-            "/api/network/nodes",
+            "/nodes",
             data=json.dumps({}),
             content_type="application/json",
         )
@@ -34,7 +34,7 @@ class NodeApiTestCase(TestCase):
     def test_post_node_duplicate_name_returns_400(self):
         Node.objects.create(name="ServerA")
         resp = self.client.post(
-            "/api/network/nodes",
+            "/nodes",
             data=json.dumps({"name": "ServerA"}),
             content_type="application/json",
         )
@@ -45,7 +45,7 @@ class NodeApiTestCase(TestCase):
     def test_get_nodes_returns_200_list(self):
         Node.objects.create(name="ServerA")
         Node.objects.create(name="ServerB")
-        resp = self.client.get("/api/network/nodes")
+        resp = self.client.get("/nodes")
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertIn("nodes", body)
@@ -53,7 +53,7 @@ class NodeApiTestCase(TestCase):
 
     def test_delete_node_returns_204(self):
         node = Node.objects.create(name="ServerA")
-        resp = self.client.delete(f"/api/network/nodes/{node.id}")
+        resp = self.client.delete(f"/nodes/{node.id}")
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(Node.objects.filter(id=node.id).exists())
 

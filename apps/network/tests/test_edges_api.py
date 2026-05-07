@@ -11,7 +11,7 @@ class EdgeApiTestCase(TestCase):
 
     def _post_edge(self, payload: dict):
         return self.client.post(
-            "/api/network/edges",
+            "/edges",
             data=json.dumps(payload),
             content_type="application/json",
         )
@@ -80,7 +80,7 @@ class EdgeApiTestCase(TestCase):
         Edge.objects.create(source=a, destination=b, latency=1.2)
         Edge.objects.create(source=b, destination=c, latency=2.3)
 
-        resp = self.client.get("/api/network/edges")
+        resp = self.client.get("/edges")
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertIn("edges", body)
@@ -91,12 +91,12 @@ class EdgeApiTestCase(TestCase):
         b = Node.objects.create(name="ServerB")
         edge = Edge.objects.create(source=a, destination=b, latency=1.2)
 
-        resp = self.client.delete(f"/api/network/edges/{edge.id}")
+        resp = self.client.delete(f"/edges/{edge.id}")
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(Edge.objects.filter(id=edge.id).exists())
 
     def test_delete_missing_edge_returns_404(self):
-        resp = self.client.delete("/api/network/edges/999")
+        resp = self.client.delete("/edges/999")
         self.assertEqual(resp.status_code, 404)
         self.assertEqual(resp.json(), {"error": "Edge not found"})
 

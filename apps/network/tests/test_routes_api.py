@@ -11,7 +11,7 @@ class RoutesApiTestCase(TestCase):
 
     def _post_shortest(self, payload: dict):
         return self.client.post(
-            "/api/network/routes/shortest",
+            "/routes/shortest",
             data=json.dumps(payload),
             content_type="application/json",
         )
