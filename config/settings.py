@@ -1,6 +1,5 @@
 """Django settings for network route optimizer."""
 
-import importlib.util
 import os
 from pathlib import Path
 
@@ -22,11 +21,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
+    "drf_spectacular",
     "apps.network",
 ]
-
-if importlib.util.find_spec("rest_framework"):
-    INSTALLED_APPS.append("rest_framework")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -93,7 +91,13 @@ USE_TZ = True
 STATIC_URL = "/static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-if importlib.util.find_spec("rest_framework"):
-    REST_FRAMEWORK = {
-        "EXCEPTION_HANDLER": "config.exception_handler.api_exception_handler",
-    }
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "config.exception_handler.api_exception_handler",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Network Route Optimizer API",
+    "DESCRIPTION": "APIs for nodes, edges, shortest routes, and route query history.",
+    "VERSION": "0.1.0",
+}
