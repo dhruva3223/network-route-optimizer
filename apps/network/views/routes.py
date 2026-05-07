@@ -1,3 +1,4 @@
+from datetime import datetime
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -51,4 +52,54 @@ class ShortestRouteView(APIView):
             {"total_latency": route.total_latency, "path": route.path},
             status=status.HTTP_200_OK,
         )
+
+
+class RouteHistoryView(APIView):
+    def get(self, request):
+        qs = RouteQuery.objects.select_related("source", "destination").all()
+
+        source = request.query_params.get("source")
+        destination = request.query_params.get("destination")
+        if source:
+            qs = qs.filter(source__name=source)
+        if destination:
+            qs = qs.filter(destination__name=destination)
+
+        date_from = request.query_params.get("date_from")
+        date_to = request.query_params.get("date_to")
+        if date_from:
+            qs = qs.filter(created_at__gte=_parse_dt(date_from))
+        if date_to:
+            qs = qs.filter(created_at__lte=_parse_dt(date_to))
+
+        limit = request.query_params.get("limit")
+        if limit:
+            try:
+                limit_value = int(limit)
+                if limit_value > 0:
+                    qs = qs[:limit_value]
+            except ValueError:
+                pass
+
+        data = [
+            {
+                "id": r.id,
+                "source": r.source.name,
+                "destination": r.destination.name,
+                "total_latency": r.total_latency,
+                "path": r.path,
+                "created_at": r.created_at.isoformat().replace("+00:00", "Z"),
+            }
+            for r in qs
+        ]
+        return Response(data, status=status.HTTP_200_OK)
+
+
+def _parse_dt(value: str) -> datetime:
+    # Accept both "...Z" and "+00:00" forms.
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    # Query params commonly decode `+` to space unless percent-encoded.
+    value = value.replace(" ", "+")
+    return datetime.fromisoformat(value)
 
