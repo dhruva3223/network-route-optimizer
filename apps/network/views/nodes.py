@@ -1,42 +1,39 @@
-import json
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from rest_framework.views import APIView as DRFAPIView
 from apps.network.models import Node
+from apps.network.serializers import NodeCreateSerializer, NodeListItemSerializer
 
 
-class NodeListCreateView(DRFAPIView):
-    def _read_json(self, request: HttpRequest) -> dict:
-        try:
-            payload = json.loads(request.body.decode("utf-8") or "{}")
-            return payload if isinstance(payload, dict) else {}
-        except Exception:
-            return {}
-
-    def get(self, request: HttpRequest) -> HttpResponse:
+class NodeListCreateView(APIView):
+    def get(self, request):
         nodes = Node.objects.all().order_by("id")
-        return JsonResponse({"nodes": [{"id": n.id, "name": n.name} for n in nodes]})
+        return Response(
+            {"nodes": NodeListItemSerializer(nodes, many=True).data},
+            status=status.HTTP_200_OK,
+        )
 
-    def post(self, request: HttpRequest) -> HttpResponse:
-        payload = self._read_json(request)
-        name = payload.get("name")
-        if not name:
-            return JsonResponse({"error": "Name missing or duplicate"}, status=400)
+    def post(self, request):
+        serializer = NodeCreateSerializer(data=request.data or {})
+        if not serializer.is_valid():
+            return Response(
+                {"error": "Name missing or duplicate"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        if Node.objects.filter(name=name).exists():
-            return JsonResponse({"error": "Name missing or duplicate"}, status=400)
+        node = Node.objects.create(name=serializer.validated_data["name"])
+        return Response(
+            NodeListItemSerializer(node).data,
+            status=status.HTTP_201_CREATED,
+        )
 
-        node = Node.objects.create(name=name)
-        return JsonResponse({"id": node.id, "name": node.name}, status=201)
 
-
-class NodeDetailView(DRFAPIView):
-    def delete(self, request: HttpRequest, pk: int) -> HttpResponse:
-        try:
-            node = Node.objects.get(pk=pk)
-        except Node.DoesNotExist:
-            return JsonResponse({"error": "Node not found"}, status=404)
-
+class NodeDetailView(APIView):
+    def delete(self, request, pk: int):
+        node = Node.objects.filter(pk=pk).first()
+        if not node:
+            return Response({"error": "Node not found"}, status=status.HTTP_404_NOT_FOUND)
         node.delete()
-        return JsonResponse({}, status=204, safe=False)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 

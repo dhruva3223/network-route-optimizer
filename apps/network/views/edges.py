@@ -1,83 +1,38 @@
-import json
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from rest_framework.views import APIView as DRFAPIView
-
-from apps.network.models import Edge, Node
+from apps.network.models import Edge
+from apps.network.serializers import EdgeCreateSerializer, EdgeListItemSerializer
 
 
-class EdgeListCreateView(DRFAPIView):
-    def _read_json(self, request: HttpRequest) -> dict:
-        try:
-            payload = json.loads(request.body.decode("utf-8") or "{}")
-            return payload if isinstance(payload, dict) else {}
-        except Exception:
-            return {}
-
-    def get(self, request: HttpRequest) -> HttpResponse:
-        edges = Edge.objects.select_related("source", "destination").order_by(
-            "id"
-        )
-        return JsonResponse(
-            {
-                "edges": [
-                    {
-                        "id": e.id,
-                        "source": e.source.name,
-                        "destination": e.destination.name,
-                        "latency": e.latency,
-                    }
-                    for e in edges
-                ]
-            }
+class EdgeListCreateView(APIView):
+    def get(self, request):
+        edges = Edge.objects.select_related("source", "destination").order_by("id")
+        return Response(
+            {"edges": EdgeListItemSerializer(edges, many=True).data},
+            status=status.HTTP_200_OK,
         )
 
-    def post(self, request: HttpRequest) -> HttpResponse:
-        payload = self._read_json(request)
-        source_name = payload.get("source")
-        destination_name = payload.get("destination")
-        latency = payload.get("latency")
-
-        if not source_name or not destination_name:
-            return JsonResponse({"error": "Source/destination missing"}, status=400)
-
-        try:
-            latency_value = float(latency)
-        except (TypeError, ValueError):
-            return JsonResponse({"error": "Latency must be > 0"}, status=400)
-
-        if latency_value <= 0:
-            return JsonResponse({"error": "Latency must be > 0"}, status=400)
-
-        source = Node.objects.filter(name=source_name).first()
-        destination = Node.objects.filter(name=destination_name).first()
-        if not source or not destination:
-            return JsonResponse({"error": "Nodes not found"}, status=400)
-
-        if Edge.objects.filter(source=source, destination=destination).exists():
-            return JsonResponse({"error": "Duplicate edge"}, status=400)
+    def post(self, request):
+        serializer = EdgeCreateSerializer(data=request.data or {})
+        if not serializer.is_valid():
+            message = serializer.errors.get("non_field_errors", ["Invalid data"])[0]
+            return Response({"error": str(message)}, status=status.HTTP_400_BAD_REQUEST)
 
         edge = Edge.objects.create(
-            source=source, destination=destination, latency=latency_value
+            source=serializer.validated_data["source_node"],
+            destination=serializer.validated_data["destination_node"],
+            latency=serializer.validated_data["latency"],
         )
-        return JsonResponse(
-            {
-                "id": edge.id,
-                "source": edge.source.name,
-                "destination": edge.destination.name,
-                "latency": edge.latency,
-            },
-            status=201,
-        )
+        return Response(EdgeListItemSerializer(edge).data, status=status.HTTP_201_CREATED)
 
 
-class EdgeDetailView(DRFAPIView):
-    def delete(self, request: HttpRequest, pk: int) -> HttpResponse:
-        try:
-            edge = Edge.objects.get(pk=pk)
-        except Edge.DoesNotExist:
-            return JsonResponse({"error": "Edge not found"}, status=404)
-
+class EdgeDetailView(APIView):
+    def delete(self, request, pk: int):
+        edge = Edge.objects.filter(pk=pk).first()
+        if not edge:
+            return Response({"error": "Edge not found"}, status=status.HTTP_404_NOT_FOUND)
         edge.delete()
-        return JsonResponse({}, status=204, safe=False)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
