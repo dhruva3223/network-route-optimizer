@@ -1,4 +1,4 @@
-## Network Route Optimizer — Leegality Python Exercise
+## Network Route Optimizer 
 
 This is a small Django + DRF service that models a directed, weighted network graph (nodes + edges), computes the shortest route between two nodes (Dijkstra), and stores a query history.
 
